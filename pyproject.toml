@@ -1,0 +1,48 @@
+[project]
+name = "shadowflow"
+version = "0.1.0"
+description = "Differential execution and impact analysis for data pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sreehari" }]
+dependencies = [
+    "duckdb>=1.1.0",
+    "networkx>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pyarrow>=17.0",
+    "sqlglot>=25.0",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.11",
+    "pre-commit>=3.7",
+    "pytest>=8.3",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+shadowflow = "shadowflow.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["shadowflow"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["shadowflow"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
