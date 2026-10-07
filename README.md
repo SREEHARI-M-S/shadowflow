@@ -17,7 +17,9 @@ python -m venv .venv
 .venv\Scripts\activate   # Windows
 pip install -e ".[dev]"
 shadowflow --help
+shadowflow init .
 shadowflow graph examples/basic_pipeline
+shadowflow graph examples/basic_pipeline --format json
 ```
 
 ## Docs

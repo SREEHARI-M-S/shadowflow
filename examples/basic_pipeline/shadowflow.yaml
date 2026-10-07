@@ -1,0 +1,11 @@
+project:
+  name: basic_pipeline
+
+pipeline:
+  directory: ./pipeline
+
+data:
+  directory: ./data
+
+execution:
+  engine: duckdb
