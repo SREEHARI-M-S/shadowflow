@@ -10,9 +10,14 @@ from rich.console import Console
 from shadowflow.graph.analyzer import topological_layers
 from shadowflow.graph.builder import build_graph, load_pipeline_from_dir, to_networkx
 from shadowflow.graph.models import PipelineGraph
+from shadowflow.cli.analyze import register_analyze_command
+from shadowflow.cli.impact import register_impact_command
 
 app = typer.Typer(no_args_is_help=True, help="ShadowFlow — pipeline impact analysis")
 console = Console()
+
+register_analyze_command(app)
+register_impact_command(app)
 
 DEFAULT_CONFIG = """\
 project:

@@ -20,6 +20,8 @@ shadowflow --help
 shadowflow init .
 shadowflow graph examples/basic_pipeline
 shadowflow graph examples/basic_pipeline --format json
+shadowflow analyze examples/basic_pipeline
+shadowflow impact examples/basic_pipeline --changed-sql pipeline/01_clean_users.sql
 ```
 
 ## Docs
