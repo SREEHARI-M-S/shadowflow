@@ -22,7 +22,8 @@ shadowflow graph examples/basic_pipeline
 shadowflow graph examples/basic_pipeline --format json
 shadowflow analyze examples/basic_pipeline
 shadowflow impact examples/basic_pipeline --changed-sql pipeline/01_clean_users.sql
-shadowflow run examples/basic_pipeline --seed
+shadowflow run examples/basic_pipeline --seed --profile
+shadowflow report examples/basic_pipeline --changed-sql pipeline/01_clean_users.sql -o impact.md
 ```
 
 ## Docs

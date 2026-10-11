@@ -4,13 +4,20 @@ from pathlib import Path
 
 import duckdb
 
+from shadowflow.diff.statistics import TableStatistics, profile_table
+from shadowflow.execution.planner import order_steps
 from shadowflow.execution.sample_data import ensure_basic_pipeline_data
 from shadowflow.models.pipeline import PipelineDefinition
 
 
 class PipelineRunResult:
-    def __init__(self, tables: dict[str, int]) -> None:
+    def __init__(
+        self,
+        tables: dict[str, int],
+        profiles: dict[str, TableStatistics] | None = None,
+    ) -> None:
         self.tables = tables
+        self.profiles = profiles or {}
 
 
 def run_pipeline(
@@ -18,6 +25,7 @@ def run_pipeline(
     data_dir: Path,
     *,
     seed_sample_data: bool = False,
+    with_profiles: bool = False,
 ) -> PipelineRunResult:
     if seed_sample_data:
         ensure_basic_pipeline_data(data_dir)
@@ -30,15 +38,18 @@ def run_pipeline(
             [str(parquet)],
         )
 
-    for step in definition.steps:
+    for step in order_steps(definition):
         conn.execute(step.sql)
 
     tables: dict[str, int] = {}
+    profiles: dict[str, TableStatistics] = {}
     for step in definition.steps:
         for output in step.outputs:
             count = conn.execute(f"SELECT COUNT(*) FROM {output}").fetchone()
             if count is not None:
                 tables[output] = int(count[0])
+            if with_profiles and output in tables:
+                profiles[output] = profile_table(conn, output)
 
     conn.close()
-    return PipelineRunResult(tables=tables)
+    return PipelineRunResult(tables=tables, profiles=profiles)
