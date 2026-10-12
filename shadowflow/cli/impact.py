@@ -11,6 +11,7 @@ from rich.table import Table
 from shadowflow.graph.builder import build_graph, load_pipeline_from_dir, to_networkx
 from shadowflow.graph.change_detection import outputs_for_changed_sql
 from shadowflow.impact.blast_radius import compute_blast_radius
+from shadowflow.impact.risk import assess_blast_radius
 
 console = Console()
 
@@ -30,6 +31,7 @@ def register_impact_command(app: typer.Typer) -> None:
             help="Changed SQL paths relative to project (repeatable)",
         ),
         json_out: bool = typer.Option(False, "--json", help="Print machine-readable report"),
+        show_risk: bool = typer.Option(False, "--risk", help="Include explainable risk score"),
     ) -> None:
         """Estimate blast radius from changed SQL files or a git revision range."""
         pipeline_dir = project / "pipeline"
@@ -57,18 +59,21 @@ def register_impact_command(app: typer.Typer) -> None:
             raise typer.Exit(code=1)
 
         report = compute_blast_radius(graph, seeds)
+        risk = assess_blast_radius(report) if show_risk or json_out else None
 
         if json_out:
-            console.print(
-                json.dumps(
-                    {
-                        "changed_files": sorted(changed_files),
-                        "direct": report.direct,
-                        "indirect": report.indirect,
-                    },
-                    indent=2,
-                ),
-            )
+            payload: dict[str, object] = {
+                "changed_files": sorted(changed_files),
+                "direct": report.direct,
+                "indirect": report.indirect,
+            }
+            if risk is not None:
+                payload["risk"] = {
+                    "level": risk.level,
+                    "score": risk.score,
+                    "factors": [f.model_dump() for f in risk.factors],
+                }
+            console.print(json.dumps(payload, indent=2))
             return
 
         table = Table(title="ShadowFlow impact (blast radius)")
@@ -79,6 +84,8 @@ def register_impact_command(app: typer.Typer) -> None:
         table.add_row("Indirect", ", ".join(report.indirect) or "—")
         console.print(table)
         console.print(f"\n[dim]Total affected datasets: {len(report.all_affected)}[/dim]")
+        if risk is not None:
+            console.print(f"\n[bold]Risk:[/bold] {risk.level} ({risk.score})")
 
 
 def _git_changed_files(project: Path, rev_range: str) -> set[str]:
