@@ -1,5 +1,10 @@
 # ShadowFlow
 
+[![version](https://img.shields.io/badge/version-0.1.6-blue)](https://github.com/SREEHARI-M-S/shadowflow/commits/main)
+
+**Repository:** [github.com/SREEHARI-M-S/shadowflow](https://github.com/SREEHARI-M-S/shadowflow)  
+**Latest on `main`:** [commit history](https://github.com/SREEHARI-M-S/shadowflow/commits/main) (look for `0e00641` or newer)
+
 **Debug your data, not just your code.**
 
 ShadowFlow predicts the behavioral impact of data pipeline changes by replaying
@@ -8,7 +13,7 @@ impact through the dependency graph.
 
 ## Status
 
-Early development — Phase 1 (parser, graph, CLI) is in place.
+Active development — CLI, DuckDB runs, impact/risk/report, YAML config. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 
