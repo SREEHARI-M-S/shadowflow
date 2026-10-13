@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from shadowflow.config import load_settings
 from shadowflow.graph.analyzer import topological_layers
 from shadowflow.graph.builder import build_graph, load_pipeline_from_dir, to_networkx
 from shadowflow.graph.models import PipelineGraph
@@ -66,7 +67,8 @@ def graph(
     fmt: GraphFormat = typer.Option(GraphFormat.text, "--format", "-f", help="Output format"),
 ) -> None:
     """Build and print the dependency graph from SQL files in pipeline/."""
-    pipeline_dir = project / "pipeline"
+    settings = load_settings(project)
+    pipeline_dir = settings.pipeline_dir
     if not pipeline_dir.is_dir():
         raise typer.BadParameter(f"Missing pipeline directory: {pipeline_dir}")
 

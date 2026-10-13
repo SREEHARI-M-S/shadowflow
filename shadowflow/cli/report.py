@@ -5,9 +5,11 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from shadowflow.config import load_settings
 from shadowflow.graph.builder import build_graph, load_pipeline_from_dir, to_networkx
 from shadowflow.graph.change_detection import outputs_for_changed_sql
 from shadowflow.impact.blast_radius import compute_blast_radius
+from shadowflow.impact.risk import assess_blast_radius
 from shadowflow.report.markdown import impact_report_markdown
 
 console = Console()
@@ -30,7 +32,8 @@ def register_report_command(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Generate a markdown impact report."""
-        pipeline_dir = project / "pipeline"
+        settings = load_settings(project)
+        pipeline_dir = settings.pipeline_dir
         if not pipeline_dir.is_dir():
             raise typer.BadParameter(f"Missing pipeline directory: {pipeline_dir}")
 
@@ -43,7 +46,8 @@ def register_report_command(app: typer.Typer) -> None:
             raise typer.Exit(code=1)
 
         blast = compute_blast_radius(graph, seeds)
-        md = impact_report_markdown(sorted(changed), blast)
+        risk = assess_blast_radius(blast)
+        md = impact_report_markdown(sorted(changed), blast, risk=risk)
         if output:
             output.write_text(md, encoding="utf-8")
             console.print(f"[green]Wrote[/green] {output}")

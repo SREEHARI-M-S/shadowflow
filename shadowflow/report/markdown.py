@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from shadowflow.impact.blast_radius import BlastRadiusReport
+from shadowflow.impact.risk import RiskAssessment
 
 
 def impact_report_markdown(
     changed_files: list[str],
     report: BlastRadiusReport,
+    risk: RiskAssessment | None = None,
 ) -> str:
     lines = [
         "# ShadowFlow impact report",
@@ -40,4 +42,19 @@ def impact_report_markdown(
             "",
         ],
     )
+    if risk is not None:
+        lines.extend(
+            [
+                "## Risk",
+                "",
+                f"**Level:** {risk.level}  ",
+                f"**Score:** {risk.score}",
+                "",
+                "### Factors",
+                "",
+            ],
+        )
+        for factor in risk.factors:
+            lines.append(f"- +{factor.points} {factor.description}")
+        lines.append("")
     return "\n".join(lines)
