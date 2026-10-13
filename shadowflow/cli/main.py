@@ -14,6 +14,7 @@ from shadowflow.graph.models import PipelineGraph
 from shadowflow.cli.analyze import register_analyze_command
 from shadowflow.cli.impact import register_impact_command
 from shadowflow.cli.report import register_report_command
+from shadowflow.cli.contracts_cmd import register_contracts_command
 from shadowflow.cli.risk import register_risk_command
 from shadowflow.cli.run import register_run_command
 
@@ -25,6 +26,7 @@ register_impact_command(app)
 register_run_command(app)
 register_report_command(app)
 register_risk_command(app)
+register_contracts_command(app)
 
 DEFAULT_CONFIG = """\
 project:

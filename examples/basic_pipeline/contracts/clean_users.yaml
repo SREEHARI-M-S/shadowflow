@@ -1,0 +1,6 @@
+dataset: clean_users
+
+contracts:
+  - column: user_id
+    nullable: false
+    unique: true

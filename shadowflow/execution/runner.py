@@ -20,17 +20,16 @@ class PipelineRunResult:
         self.profiles = profiles or {}
 
 
-def run_pipeline(
+def execute_on_connection(
+    conn: duckdb.DuckDBPyConnection,
     definition: PipelineDefinition,
     data_dir: Path,
     *,
     seed_sample_data: bool = False,
-    with_profiles: bool = False,
-) -> PipelineRunResult:
+) -> None:
     if seed_sample_data:
         ensure_basic_pipeline_data(data_dir)
 
-    conn = duckdb.connect()
     for parquet in sorted(data_dir.glob("*.parquet")):
         table = parquet.stem
         conn.execute(
@@ -41,6 +40,12 @@ def run_pipeline(
     for step in order_steps(definition):
         conn.execute(step.sql)
 
+
+def _collect_results(
+    conn: duckdb.DuckDBPyConnection,
+    definition: PipelineDefinition,
+    with_profiles: bool,
+) -> PipelineRunResult:
     tables: dict[str, int] = {}
     profiles: dict[str, TableStatistics] = {}
     for step in definition.steps:
@@ -50,6 +55,31 @@ def run_pipeline(
                 tables[output] = int(count[0])
             if with_profiles and output in tables:
                 profiles[output] = profile_table(conn, output)
-
-    conn.close()
     return PipelineRunResult(tables=tables, profiles=profiles)
+
+
+def run_pipeline(
+    definition: PipelineDefinition,
+    data_dir: Path,
+    *,
+    seed_sample_data: bool = False,
+    with_profiles: bool = False,
+) -> PipelineRunResult:
+    conn = duckdb.connect()
+    execute_on_connection(conn, definition, data_dir, seed_sample_data=seed_sample_data)
+    result = _collect_results(conn, definition, with_profiles)
+    conn.close()
+    return result
+
+
+def run_pipeline_open(
+    definition: PipelineDefinition,
+    data_dir: Path,
+    *,
+    seed_sample_data: bool = False,
+    with_profiles: bool = False,
+) -> tuple[PipelineRunResult, duckdb.DuckDBPyConnection]:
+    """Run pipeline and return an open DuckDB connection (caller must close)."""
+    conn = duckdb.connect()
+    execute_on_connection(conn, definition, data_dir, seed_sample_data=seed_sample_data)
+    return _collect_results(conn, definition, with_profiles), conn
