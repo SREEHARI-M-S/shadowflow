@@ -17,6 +17,18 @@ def register_contracts_command(app: typer.Typer) -> None:
     contracts_app = typer.Typer(help="Data contract checks")
     app.add_typer(contracts_app, name="contracts")
 
+    @contracts_app.command("list")
+    def list_contracts(
+        project: Path = typer.Argument(..., help="Pipeline project root"),
+    ) -> None:
+        """List contract YAML files under contracts/."""
+        contracts_dir = project / "contracts"
+        if not contracts_dir.is_dir():
+            console.print("[yellow]No contracts/ directory found.[/yellow]")
+            raise typer.Exit(code=1)
+        for path in sorted(contracts_dir.glob("*.yaml")):
+            console.print(path.name)
+
     @contracts_app.command("check")
     def check(
         project: Path = typer.Argument(..., help="Pipeline project root"),

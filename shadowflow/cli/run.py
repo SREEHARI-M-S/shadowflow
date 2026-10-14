@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -27,6 +28,7 @@ def register_run_command(app: typer.Typer) -> None:
             "--profile",
             help="Show column names per output table",
         ),
+        json_out: bool = typer.Option(False, "--json", help="Print row counts as JSON"),
     ) -> None:
         """Execute pipeline SQL steps in order using DuckDB."""
         settings = load_settings(project)
@@ -41,6 +43,15 @@ def register_run_command(app: typer.Typer) -> None:
             seed_sample_data=seed,
             with_profiles=profile,
         )
+
+        if json_out:
+            payload: dict[str, object] = {"tables": result.tables}
+            if profile:
+                payload["profiles"] = {
+                    name: stats.model_dump() for name, stats in result.profiles.items()
+                }
+            console.print(json.dumps(payload, indent=2))
+            return
 
         table = Table(title="Pipeline run complete")
         table.add_column("Output table")
