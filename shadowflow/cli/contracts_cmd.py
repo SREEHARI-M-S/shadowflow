@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -34,6 +35,7 @@ def register_contracts_command(app: typer.Typer) -> None:
         project: Path = typer.Argument(..., help="Pipeline project root"),
         contract_file: Path = typer.Argument(..., help="YAML contract file"),
         seed: bool = typer.Option(False, "--seed", help="Seed demo Parquet if missing"),
+        json_out: bool = typer.Option(False, "--json", help="Print validation result as JSON"),
     ) -> None:
         """Run pipeline and validate a dataset contract against DuckDB outputs."""
         settings = load_settings(project)
@@ -42,6 +44,19 @@ def register_contracts_command(app: typer.Typer) -> None:
         contract = load_contract(contract_file)
         result = validate_dataset_contract(conn, contract)
         conn.close()
+
+        if json_out:
+            console.print(
+                json.dumps(
+                    {
+                        "dataset": contract.dataset,
+                        "ok": result.ok,
+                        "violations": [v.model_dump() for v in result.violations],
+                    },
+                    indent=2,
+                ),
+            )
+            raise typer.Exit(code=0 if result.ok else 1)
 
         if result.ok:
             console.print(f"[green]OK[/green] {contract.dataset}")

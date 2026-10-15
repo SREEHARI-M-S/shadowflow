@@ -8,6 +8,8 @@ from rich.console import Console
 from rich.table import Table
 
 from shadowflow.diff.row_diff import RowCountDiff
+from shadowflow.diff.schema_diff import diff_fingerprint_schemas
+from shadowflow.execution.fingerprint import load_fingerprint
 
 console = Console()
 
@@ -38,9 +40,40 @@ def register_diff_command(app: typer.Typer) -> None:
         console.print(table)
 
 
+    @app.command("diff-schema")
+    def diff_schema_cmd(
+        before: Path = typer.Argument(..., help="Before fingerprint JSON"),
+        after: Path = typer.Argument(..., help="After fingerprint JSON"),
+        json_out: bool = typer.Option(False, "--json", help="Print JSON diff"),
+    ) -> None:
+        """Compare table schemas between two fingerprint files."""
+        b = load_fingerprint(before)
+        a = load_fingerprint(after)
+        before_cols = {d.table: d.columns for d in b.datasets}
+        after_cols = {d.table: d.columns for d in a.datasets}
+        result = diff_fingerprint_schemas(before_cols, after_cols)
+
+        if json_out:
+            console.print(json.dumps(result.model_dump(), indent=2))
+            return
+
+        if not result.tables:
+            console.print("[green]No schema changes detected.[/green]")
+            return
+
+        table = Table(title="Schema diff")
+        table.add_column("Table")
+        table.add_column("Added")
+        table.add_column("Removed")
+        for row in result.tables:
+            table.add_row(
+                row.table,
+                ", ".join(row.diff.added_columns) or "—",
+                ", ".join(row.diff.removed_columns) or "—",
+            )
+        console.print(table)
+
+
 def _counts_from_fingerprint(path: Path) -> dict[str, int]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    counts: dict[str, int] = {}
-    for item in data.get("datasets", []):
-        counts[str(item["table"])] = int(item["row_count"])
-    return counts
+    fp = load_fingerprint(path)
+    return {d.table: d.row_count for d in fp.datasets}
