@@ -8,6 +8,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from shadowflow.config import load_settings
 from shadowflow.graph.builder import build_graph, load_pipeline_from_dir, to_networkx
 from shadowflow.graph.change_detection import outputs_for_changed_sql
 from shadowflow.impact.blast_radius import compute_blast_radius
@@ -34,7 +35,8 @@ def register_impact_command(app: typer.Typer) -> None:
         show_risk: bool = typer.Option(False, "--risk", help="Include explainable risk score"),
     ) -> None:
         """Estimate blast radius from changed SQL files or a git revision range."""
-        pipeline_dir = project / "pipeline"
+        settings = load_settings(project)
+        pipeline_dir = settings.pipeline_dir
         if not pipeline_dir.is_dir():
             raise typer.BadParameter(f"Missing pipeline directory: {pipeline_dir}")
 
