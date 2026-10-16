@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- `shadowflow compare` — differential execution (before/after SQL) with row deltas on blast-radius datasets
+- Git revision helpers and pipeline SQL overrides
+
 ## 0.1.6
 
 - Impact markdown reports include risk section

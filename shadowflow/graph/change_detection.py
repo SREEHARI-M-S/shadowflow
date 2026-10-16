@@ -20,5 +20,9 @@ def outputs_for_changed_sql(definition: PipelineDefinition, changed_paths: set[s
     return outputs
 
 
-def _normalize_path(path: str) -> str:
+def normalize_pipeline_path(path: str) -> str:
     return path.replace("\\", "/").lstrip("./")
+
+
+def _normalize_path(path: str) -> str:
+    return normalize_pipeline_path(path)
