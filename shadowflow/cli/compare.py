@@ -16,7 +16,9 @@ from shadowflow.git.revisions import (
     sql_overrides_for_change,
 )
 from shadowflow.graph.builder import load_pipeline_from_dir
+from shadowflow.execution.history import load_compare_report, save_compare_report
 from shadowflow.graph.change_detection import normalize_pipeline_path
+from shadowflow.report.compare_markdown import compare_report_markdown
 
 console = Console()
 
@@ -42,8 +44,30 @@ def register_compare_command(app: typer.Typer) -> None:
         ),
         seed: bool = typer.Option(False, "--seed", help="Seed demo Parquet inputs"),
         json_out: bool = typer.Option(False, "--json", help="Machine-readable report"),
+        show_risk: bool = typer.Option(False, "--risk", help="Print risk assessment"),
+        show_propagation: bool = typer.Option(
+            True,
+            "--propagation/--no-propagation",
+            help="Show estimated downstream % impact",
+        ),
+        save: bool = typer.Option(False, "--save", help="Write report to .shadowflow/last-compare.json"),
+        show_last: bool = typer.Option(False, "--last", help="Print last saved compare report"),
+        output: Path | None = typer.Option(
+            None,
+            "-o",
+            "--output",
+            help="Write markdown compare report to this file",
+        ),
     ) -> None:
         """Run before/after pipeline variants and diff row counts on affected datasets."""
+        if show_last:
+            last = load_compare_report(project)
+            if last is None:
+                console.print("[yellow]No saved compare report. Run with --save first.[/yellow]")
+                raise typer.Exit(code=1)
+            console.print(json.dumps(last.model_dump(), indent=2))
+            raise typer.Exit(code=0)
+
         settings = load_settings(project)
         definition = load_pipeline_from_dir(settings.pipeline_dir)
 
@@ -97,6 +121,14 @@ def register_compare_command(app: typer.Typer) -> None:
             seed_sample_data=seed,
         )
 
+        if save:
+            path = save_compare_report(project, report)
+            console.print(f"[dim]Saved {path}[/dim]")
+
+        if output is not None:
+            output.write_text(compare_report_markdown(report), encoding="utf-8")
+            console.print(f"[green]Wrote[/green] {output}")
+
         if json_out:
             console.print(json.dumps(report.model_dump(), indent=2))
             return
@@ -117,3 +149,14 @@ def register_compare_command(app: typer.Typer) -> None:
             )
         console.print(table)
         console.print(f"\n[dim]Affected datasets: {len(report.affected_datasets)}[/dim]")
+        if show_propagation and report.propagated:
+            prop = Table(title="Estimated % impact (propagation model)")
+            prop.add_column("Dataset")
+            prop.add_column("Est. %", justify="right")
+            prop.add_column("Source")
+            for item in report.propagated:
+                pct = f"{item.estimated_pct_change:.2f}" if item.estimated_pct_change is not None else "—"
+                prop.add_row(item.dataset, pct, item.source)
+            console.print(prop)
+        if show_risk and report.risk:
+            console.print(f"\n[bold]Risk:[/bold] {report.risk.level} ({report.risk.score})")

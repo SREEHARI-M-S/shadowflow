@@ -10,23 +10,24 @@ from shadowflow.execution.fingerprint import build_fingerprint
 from shadowflow.execution.runner import run_pipeline
 from shadowflow.graph.builder import build_graph, to_networkx
 from shadowflow.graph.change_detection import outputs_for_changed_sql
-from shadowflow.impact.blast_radius import compute_blast_radius
+from shadowflow.impact.blast_radius import BlastRadiusReport, compute_blast_radius
+from shadowflow.diff.compare_rows import DatasetCompareRow
+from shadowflow.impact.propagation import PropagatedImpact, estimate_propagated_impacts
+from shadowflow.impact.risk import RiskAssessment, assess_blast_radius
 from shadowflow.models.pipeline import PipelineDefinition
 from shadowflow.pipeline.variants import apply_sql_overrides
 
-
-class DatasetCompareRow(BaseModel):
-    dataset: str
-    row_before: int
-    row_after: int
-    row_delta: int
-    schema_changed: bool
+# Re-export for callers that import from pipeline_compare
+__all__ = ["DatasetCompareRow", "PipelineCompareReport", "compare_pipeline_variants"]
 
 
 class PipelineCompareReport(BaseModel):
     changed_sql: list[str] = Field(default_factory=list)
     affected_datasets: list[str] = Field(default_factory=list)
     datasets: list[DatasetCompareRow] = Field(default_factory=list)
+    propagated: list[PropagatedImpact] = Field(default_factory=list)
+    blast_radius: BlastRadiusReport | None = None
+    risk: RiskAssessment | None = None
     row_diff: RowCountDiff | None = None
     schema_diff: FingerprintSchemaDiff | None = None
 
@@ -76,10 +77,14 @@ def compare_pipeline_variants(
             ),
         )
 
+    propagated = estimate_propagated_impacts(graph, seeds, datasets)
     return PipelineCompareReport(
         changed_sql=sorted(changed_paths),
         affected_datasets=sorted(affected),
         datasets=datasets,
+        propagated=propagated,
+        blast_radius=blast,
+        risk=assess_blast_radius(blast),
         row_diff=row_diff,
         schema_diff=schema_diff,
     )
