@@ -20,6 +20,8 @@ from shadowflow.cli.diff_cmd import register_diff_command
 from shadowflow.cli.fingerprint import register_fingerprint_command
 from shadowflow.cli.risk import register_risk_command
 from shadowflow.cli.run import register_run_command
+from shadowflow.cli.plan import register_plan_command
+from shadowflow.graph.mermaid import graph_to_mermaid
 
 app = typer.Typer(no_args_is_help=True, help="ShadowFlow — pipeline impact analysis")
 console = Console()
@@ -33,6 +35,7 @@ register_contracts_command(app)
 register_fingerprint_command(app)
 register_diff_command(app)
 register_compare_command(app)
+register_plan_command(app)
 
 DEFAULT_CONFIG = """\
 project:
@@ -52,6 +55,7 @@ execution:
 class GraphFormat(str, Enum):
     text = "text"
     json = "json"
+    mermaid = "mermaid"
 
 
 @app.command()
@@ -92,6 +96,10 @@ def graph(
 
     if fmt == GraphFormat.json:
         console.print(json.dumps(_graph_to_dict(pg, layers), indent=2))
+        return
+
+    if fmt == GraphFormat.mermaid:
+        console.print(graph_to_mermaid(pg))
         return
 
     for layer in layers:

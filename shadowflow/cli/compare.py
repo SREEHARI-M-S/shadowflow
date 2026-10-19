@@ -58,6 +58,11 @@ def register_compare_command(app: typer.Typer) -> None:
             "--output",
             help="Write markdown compare report to this file",
         ),
+        fail_on_change: bool = typer.Option(
+            False,
+            "--fail-on-change",
+            help="Exit with code 1 if any affected dataset has row or schema changes",
+        ),
     ) -> None:
         """Run before/after pipeline variants and diff row counts on affected datasets."""
         if show_last:
@@ -160,3 +165,9 @@ def register_compare_command(app: typer.Typer) -> None:
             console.print(prop)
         if show_risk and report.risk:
             console.print(f"\n[bold]Risk:[/bold] {report.risk.level} ({report.risk.score})")
+
+        if fail_on_change:
+            changed = [r for r in report.datasets if r.row_delta != 0 or r.schema_changed]
+            if changed:
+                console.print(f"[red]{len(changed)} dataset(s) changed[/red]")
+                raise typer.Exit(code=1)
