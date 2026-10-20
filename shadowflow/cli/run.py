@@ -29,6 +29,11 @@ def register_run_command(app: typer.Typer) -> None:
             help="Show column names per output table",
         ),
         json_out: bool = typer.Option(False, "--json", help="Print row counts as JSON"),
+        upto: str | None = typer.Option(
+            None,
+            "--upto",
+            help="Stop after the step that materializes this output table",
+        ),
     ) -> None:
         """Execute pipeline SQL steps in order using DuckDB."""
         settings = load_settings(project)
@@ -42,6 +47,7 @@ def register_run_command(app: typer.Typer) -> None:
             settings.data_dir,
             seed_sample_data=seed,
             with_profiles=profile,
+            upto_table=upto,
         )
 
         if json_out:

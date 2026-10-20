@@ -21,6 +21,7 @@ from shadowflow.cli.fingerprint import register_fingerprint_command
 from shadowflow.cli.risk import register_risk_command
 from shadowflow.cli.run import register_run_command
 from shadowflow.cli.plan import register_plan_command
+from shadowflow.cli.doctor import register_doctor_command
 from shadowflow.graph.mermaid import graph_to_mermaid
 
 app = typer.Typer(no_args_is_help=True, help="ShadowFlow — pipeline impact analysis")
@@ -36,6 +37,7 @@ register_fingerprint_command(app)
 register_diff_command(app)
 register_compare_command(app)
 register_plan_command(app)
+register_doctor_command(app)
 
 DEFAULT_CONFIG = """\
 project:

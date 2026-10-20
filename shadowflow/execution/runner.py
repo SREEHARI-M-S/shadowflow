@@ -26,6 +26,7 @@ def execute_on_connection(
     data_dir: Path,
     *,
     seed_sample_data: bool = False,
+    upto_table: str | None = None,
 ) -> None:
     if seed_sample_data:
         ensure_basic_pipeline_data(data_dir)
@@ -39,6 +40,13 @@ def execute_on_connection(
 
     for step in order_steps(definition):
         conn.execute(step.sql)
+        if upto_table and upto_table in step.outputs:
+            return
+
+
+def _existing_tables(conn: duckdb.DuckDBPyConnection) -> set[str]:
+    rows = conn.execute("SHOW TABLES").fetchall()
+    return {str(row[0]) for row in rows}
 
 
 def _collect_results(
@@ -48,8 +56,11 @@ def _collect_results(
 ) -> PipelineRunResult:
     tables: dict[str, int] = {}
     profiles: dict[str, TableStatistics] = {}
+    existing = _existing_tables(conn)
     for step in definition.steps:
         for output in step.outputs:
+            if output not in existing:
+                continue
             count = conn.execute(f"SELECT COUNT(*) FROM {output}").fetchone()
             if count is not None:
                 tables[output] = int(count[0])
@@ -64,9 +75,16 @@ def run_pipeline(
     *,
     seed_sample_data: bool = False,
     with_profiles: bool = False,
+    upto_table: str | None = None,
 ) -> PipelineRunResult:
     conn = duckdb.connect()
-    execute_on_connection(conn, definition, data_dir, seed_sample_data=seed_sample_data)
+    execute_on_connection(
+        conn,
+        definition,
+        data_dir,
+        seed_sample_data=seed_sample_data,
+        upto_table=upto_table,
+    )
     result = _collect_results(conn, definition, with_profiles)
     conn.close()
     return result
@@ -78,8 +96,15 @@ def run_pipeline_open(
     *,
     seed_sample_data: bool = False,
     with_profiles: bool = False,
+    upto_table: str | None = None,
 ) -> tuple[PipelineRunResult, duckdb.DuckDBPyConnection]:
     """Run pipeline and return an open DuckDB connection (caller must close)."""
     conn = duckdb.connect()
-    execute_on_connection(conn, definition, data_dir, seed_sample_data=seed_sample_data)
+    execute_on_connection(
+        conn,
+        definition,
+        data_dir,
+        seed_sample_data=seed_sample_data,
+        upto_table=upto_table,
+    )
     return _collect_results(conn, definition, with_profiles), conn
