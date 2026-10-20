@@ -79,6 +79,7 @@ def init(
 def graph(
     project: Path = typer.Argument(..., help="Path to example pipeline root"),
     fmt: GraphFormat = typer.Option(GraphFormat.text, "--format", "-f", help="Output format"),
+    output: Path | None = typer.Option(None, "-o", "--output", help="Write graph output to file"),
 ) -> None:
     """Build and print the dependency graph from SQL files in pipeline/."""
     settings = load_settings(project)
@@ -97,16 +98,32 @@ def graph(
         raise typer.Exit(code=1) from exc
 
     if fmt == GraphFormat.json:
-        console.print(json.dumps(_graph_to_dict(pg, layers), indent=2))
+        text = json.dumps(_graph_to_dict(pg, layers), indent=2)
+        _emit_graph(text, output)
         return
 
     if fmt == GraphFormat.mermaid:
-        console.print(graph_to_mermaid(pg))
+        _emit_graph(graph_to_mermaid(pg), output)
         return
 
+    lines: list[str] = []
     for layer in layers:
-        console.print(" → ".join(layer))
-    console.print(f"\n[dim]{len(pg.nodes)} nodes, {len(pg.edges)} edges[/dim]")
+        lines.append(" → ".join(layer))
+    lines.append(f"\n{len(pg.nodes)} nodes, {len(pg.edges)} edges")
+    _emit_graph("\n".join(lines), output, dim_footer=not output)
+
+
+def _emit_graph(text: str, output: Path | None, *, dim_footer: bool = False) -> None:
+    if output is not None:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"[green]Wrote[/green] {output}")
+        return
+    if dim_footer and text.endswith("edges"):
+        body, footer = text.rsplit("\n", 1)
+        console.print(body)
+        console.print(f"\n[dim]{footer}[/dim]")
+        return
+    console.print(text)
 
 
 def _graph_to_dict(pg: PipelineGraph, layers: list[list[str]]) -> dict[str, object]:

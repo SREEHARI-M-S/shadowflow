@@ -7,7 +7,9 @@ import typer
 from rich.console import Console
 
 from shadowflow.config import load_settings
+from shadowflow.contracts.scaffold import contract_yaml_from_table
 from shadowflow.contracts.validator import load_contract, validate_dataset_contract
+from shadowflow.diff.statistics import profile_table
 from shadowflow.execution.runner import run_pipeline_open
 from shadowflow.graph.builder import load_pipeline_from_dir
 
@@ -109,3 +111,26 @@ def register_contracts_command(app: typer.Typer) -> None:
             else:
                 console.print(f"[red]FAIL[/red] {item['file']}")
         raise typer.Exit(code=1 if failed else 0)
+
+    @contracts_app.command("scaffold")
+    def scaffold(
+        project: Path = typer.Argument(..., help="Pipeline project root"),
+        dataset: str = typer.Option(..., "--dataset", help="Output table to describe"),
+        output: Path = typer.Option(..., "-o", "--output", help="Write contract YAML here"),
+        seed: bool = typer.Option(False, "--seed", help="Seed demo Parquet if missing"),
+    ) -> None:
+        """Generate a starter contract YAML from a live DuckDB table schema."""
+        settings = load_settings(project)
+        definition = load_pipeline_from_dir(settings.pipeline_dir)
+        _, conn = run_pipeline_open(definition, settings.data_dir, seed_sample_data=seed)
+        try:
+            stats = profile_table(conn, dataset)
+        except Exception as exc:  # noqa: BLE001
+            conn.close()
+            console.print(f"[red]Could not profile {dataset}:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
+        conn.close()
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(contract_yaml_from_table(dataset, stats), encoding="utf-8")
+        console.print(f"[green]Wrote[/green] {output} ({len(stats.columns)} columns)")
