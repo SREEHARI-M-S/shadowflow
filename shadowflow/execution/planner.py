@@ -37,3 +37,11 @@ def order_steps(definition: PipelineDefinition) -> list[SqlStep]:
         if step.path not in seen:
             ordered_steps.append(step)
     return ordered_steps
+
+
+def steps_upto(steps: list[SqlStep], table: str) -> list[SqlStep]:
+    """Return the prefix of ordered steps needed to materialize ``table``."""
+    for index, step in enumerate(steps):
+        if table in step.outputs:
+            return steps[: index + 1]
+    raise ValueError(f"No pipeline step outputs table: {table}")
