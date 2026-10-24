@@ -17,6 +17,11 @@ def register_doctor_command(app: typer.Typer) -> None:
     def doctor(
         project: Path = typer.Argument(..., help="Pipeline project root"),
         json_out: bool = typer.Option(False, "--json", help="Print checks as JSON"),
+        mkdir: bool = typer.Option(
+            False,
+            "--mkdir",
+            help="Create missing pipeline and data directories before validating",
+        ),
     ) -> None:
         """Validate project layout, config, and pipeline SQL presence."""
         issues: list[str] = []
@@ -25,6 +30,9 @@ def register_doctor_command(app: typer.Typer) -> None:
             issues.append(f"Missing config: {config_path}")
 
         settings = load_settings(project) if config_path.is_file() else None
+        if settings is not None and mkdir:
+            settings.pipeline_dir.mkdir(parents=True, exist_ok=True)
+            settings.data_dir.mkdir(parents=True, exist_ok=True)
         if settings is not None:
             if not settings.pipeline_dir.is_dir():
                 issues.append(f"Missing pipeline directory: {settings.pipeline_dir}")

@@ -7,6 +7,20 @@ from shadowflow.cli.main import app
 runner = CliRunner()
 
 
+def test_doctor_mkdir_creates_missing_dirs(tmp_path: Path) -> None:
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / "shadowflow.yaml").write_text(
+        "pipeline:\n  directory: ./pipeline\n\ndata:\n  directory: ./data\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["doctor", str(project), "--mkdir"])
+    assert (project / "pipeline").is_dir()
+    assert (project / "data").is_dir()
+    assert result.exit_code == 1
+    assert "No .sql files" in result.stdout
+
+
 def test_doctor_ok_on_basic_pipeline() -> None:
     result = runner.invoke(app, ["doctor", "examples/basic_pipeline"])
     assert result.exit_code == 0
