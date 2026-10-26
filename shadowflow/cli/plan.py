@@ -24,6 +24,7 @@ def register_plan_command(app: typer.Typer) -> None:
             "--upto",
             help="Only show steps required to materialize this output table",
         ),
+        output: Path | None = typer.Option(None, "-o", "--output", help="Write plan JSON to file"),
     ) -> None:
         """Show SQL steps in dependency execution order."""
         settings = load_settings(project)
@@ -35,16 +36,21 @@ def register_plan_command(app: typer.Typer) -> None:
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
 
+        payload = [
+            {
+                "path": s.path,
+                "outputs": list(s.outputs),
+                "inputs": list(s.inputs),
+            }
+            for s in steps
+        ]
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote[/green] {output}")
         if json_out:
-            payload = [
-                {
-                    "path": s.path,
-                    "outputs": list(s.outputs),
-                    "inputs": list(s.inputs),
-                }
-                for s in steps
-            ]
             console.print(json.dumps(payload, indent=2))
+        if json_out or output is not None:
             return
 
         table = Table(title="Execution plan")
