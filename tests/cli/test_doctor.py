@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -5,6 +6,15 @@ from typer.testing import CliRunner
 from shadowflow.cli.main import app
 
 runner = CliRunner()
+
+
+def test_doctor_writes_output_json(tmp_path: Path) -> None:
+    out = tmp_path / "doctor.json"
+    result = runner.invoke(app, ["doctor", "examples/basic_pipeline", "-o", str(out)])
+    assert result.exit_code == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["ok"] is True
+    assert payload["issues"] == []
 
 
 def test_doctor_mkdir_creates_missing_dirs(tmp_path: Path) -> None:

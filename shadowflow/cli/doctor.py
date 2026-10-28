@@ -22,6 +22,7 @@ def register_doctor_command(app: typer.Typer) -> None:
             "--mkdir",
             help="Create missing pipeline and data directories before validating",
         ),
+        output: Path | None = typer.Option(None, "-o", "--output", help="Write check results JSON"),
     ) -> None:
         """Validate project layout, config, and pipeline SQL presence."""
         issues: list[str] = []
@@ -48,8 +49,14 @@ def register_doctor_command(app: typer.Typer) -> None:
                     issues.append(f"Pipeline load failed: {exc}")
 
         ok = not issues
+        document = {"ok": ok, "project": str(project), "issues": issues}
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(document, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote[/green] {output}")
         if json_out:
-            console.print(json.dumps({"ok": ok, "issues": issues}, indent=2))
+            console.print(json.dumps(document, indent=2))
+        if json_out or output is not None:
             raise typer.Exit(code=0 if ok else 1)
 
         if ok:
