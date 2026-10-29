@@ -29,6 +29,7 @@ def register_run_command(app: typer.Typer) -> None:
             help="Show column names per output table",
         ),
         json_out: bool = typer.Option(False, "--json", help="Print row counts as JSON"),
+        output: Path | None = typer.Option(None, "-o", "--output", help="Write run results JSON"),
         upto: str | None = typer.Option(
             None,
             "--upto",
@@ -50,13 +51,18 @@ def register_run_command(app: typer.Typer) -> None:
             upto_table=upto,
         )
 
+        payload: dict[str, object] = {"tables": result.tables}
+        if profile:
+            payload["profiles"] = {
+                name: stats.model_dump() for name, stats in result.profiles.items()
+            }
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote[/green] {output}")
         if json_out:
-            payload: dict[str, object] = {"tables": result.tables}
-            if profile:
-                payload["profiles"] = {
-                    name: stats.model_dump() for name, stats in result.profiles.items()
-                }
             console.print(json.dumps(payload, indent=2))
+        if json_out or output is not None:
             return
 
         table = Table(title="Pipeline run complete")
