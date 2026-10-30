@@ -34,6 +34,7 @@ def register_impact_command(app: typer.Typer) -> None:
             help="Changed SQL paths relative to project (repeatable)",
         ),
         json_out: bool = typer.Option(False, "--json", help="Print machine-readable report"),
+        output: Path | None = typer.Option(None, "-o", "--output", help="Write impact report JSON"),
         show_risk: bool = typer.Option(False, "--risk", help="Include explainable risk score"),
         execute: bool = typer.Option(
             False,
@@ -69,7 +70,8 @@ def register_impact_command(app: typer.Typer) -> None:
             raise typer.Exit(code=1)
 
         blast = compute_blast_radius(graph, seeds)
-        risk = assess_blast_radius(blast) if show_risk or json_out or execute else None
+        include_risk = show_risk or json_out or output is not None or execute
+        risk = assess_blast_radius(blast) if include_risk else None
         execution_report = None
         if execute:
             if not rev_range:
@@ -94,21 +96,26 @@ def register_impact_command(app: typer.Typer) -> None:
                 seed_sample_data=seed,
             )
 
-        if json_out:
-            payload: dict[str, object] = {
-                "changed_files": sorted(changed_files),
-                "direct": blast.direct,
-                "indirect": blast.indirect,
+        payload: dict[str, object] = {
+            "changed_files": sorted(changed_files),
+            "direct": blast.direct,
+            "indirect": blast.indirect,
+        }
+        if risk is not None:
+            payload["risk"] = {
+                "level": risk.level,
+                "score": risk.score,
+                "factors": [f.model_dump() for f in risk.factors],
             }
-            if risk is not None:
-                payload["risk"] = {
-                    "level": risk.level,
-                    "score": risk.score,
-                    "factors": [f.model_dump() for f in risk.factors],
-                }
-            if execution_report is not None:
-                payload["execution"] = execution_report.model_dump()
+        if execution_report is not None:
+            payload["execution"] = execution_report.model_dump()
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote[/green] {output}")
+        if json_out:
             console.print(json.dumps(payload, indent=2))
+        if json_out or output is not None:
             return
 
         table = Table(title="ShadowFlow impact (blast radius)")
