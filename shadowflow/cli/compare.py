@@ -131,11 +131,19 @@ def register_compare_command(app: typer.Typer) -> None:
             console.print(f"[dim]Saved {path}[/dim]")
 
         if output is not None:
-            output.write_text(compare_report_markdown(report), encoding="utf-8")
+            if json_out:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(json.dumps(report.model_dump(), indent=2), encoding="utf-8")
+            else:
+                output.write_text(compare_report_markdown(report), encoding="utf-8")
             console.print(f"[green]Wrote[/green] {output}")
 
         if json_out:
             console.print(json.dumps(report.model_dump(), indent=2))
+            if fail_on_change:
+                changed = [r for r in report.datasets if r.row_delta != 0 or r.schema_changed]
+                if changed:
+                    raise typer.Exit(code=1)
             return
 
         table = Table(title="Differential pipeline compare")
