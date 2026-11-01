@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -37,6 +38,7 @@ def register_report_command(app: typer.Typer) -> None:
             "--last-compare",
             help="Append saved differential compare section if present",
         ),
+        json_out: bool = typer.Option(False, "--json", help="Print structured impact JSON"),
     ) -> None:
         """Generate a markdown impact report."""
         settings = load_settings(project)
@@ -54,6 +56,29 @@ def register_report_command(app: typer.Typer) -> None:
 
         blast = compute_blast_radius(graph, seeds)
         risk = assess_blast_radius(blast)
+        document: dict[str, object] = {
+            "changed_sql": sorted(changed),
+            "direct": blast.direct,
+            "indirect": blast.indirect,
+            "all_affected": blast.all_affected,
+            "risk": {
+                "level": risk.level,
+                "score": risk.score,
+                "factors": [f.model_dump() for f in risk.factors],
+            },
+        }
+        if include_last_compare:
+            last = load_compare_report(project)
+            if last is not None:
+                document["last_compare"] = last.model_dump()
+        if json_out:
+            if output is not None:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(json.dumps(document, indent=2), encoding="utf-8")
+                console.print(f"[green]Wrote[/green] {output}")
+            else:
+                console.print(json.dumps(document, indent=2))
+            return
         md = impact_report_markdown(sorted(changed), blast, risk=risk)
         if include_last_compare:
             last = load_compare_report(project)
